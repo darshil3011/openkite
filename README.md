@@ -52,9 +52,7 @@ pip install -e ".[dev]"
 
 ### 2. Add your API keys
 
-OpenKite needs two keys: **AWS credentials** for the tools, and an **Anthropic API key** for the LLM.
-
-Simplest way — export them in your shell:
+OpenKite needs **AWS credentials** for the tools and **one LLM provider key** for the agent. Anthropic is the default — pick anything else from [Choose your LLM provider](#choose-your-llm-provider) below.
 
 ```bash
 # AWS (read-only IAM user is recommended for safety)
@@ -62,18 +60,13 @@ export AWS_ACCESS_KEY_ID=AKIA...
 export AWS_SECRET_ACCESS_KEY=...
 export AWS_DEFAULT_REGION=us-east-1
 
-# Anthropic (https://console.anthropic.com/)
+# Default LLM: Anthropic Claude (https://console.anthropic.com/)
 export ANTHROPIC_API_KEY=sk-ant-...
 ```
 
-To make it persistent, append those lines to `~/.bashrc` (or `~/.zshrc`) and `source` it. Boto3 and `ChatAnthropic` pick up the env vars automatically — no code changes needed.
+Append these to `~/.bashrc` (or `~/.zshrc`) and `source` it to make them persistent. Boto3 and the LangChain provider pick up env vars automatically.
 
-Alternatively, if you already use AWS profiles:
-
-```bash
-export AWS_PROFILE=my-readonly-profile
-export ANTHROPIC_API_KEY=sk-ant-...
-```
+If you already use AWS profiles, set `AWS_PROFILE=my-readonly-profile` instead of the two key/secret vars.
 
 ### 3. Use it
 
@@ -164,15 +157,73 @@ Three layers per service:
 
 Run `openkite tools` to see live arg signatures.
 
+## Choose your LLM provider
+
+OpenKite is provider-agnostic. Anthropic is the default; switch to any other provider with two env vars (`OPENKITE_PROVIDER` + `OPENKITE_MODEL`) plus that provider's API key. No CLI flags, no code changes.
+
+Run `openkite providers` to see the live list with default models and install hints.
+
+| Provider | Install | API key env var | Example model |
+|---|---|---|---|
+| **Anthropic** _(default)_ | bundled | `ANTHROPIC_API_KEY` | `claude-haiku-4-5-20251001` |
+| **OpenAI** | `pip install 'cloudops-openkite[openai]'` | `OPENAI_API_KEY` | `gpt-4o` |
+| **Google Gemini** | `pip install 'cloudops-openkite[google]'` | `GOOGLE_API_KEY` | `gemini-2.0-flash` |
+| **Mistral** | `pip install 'cloudops-openkite[mistral]'` | `MISTRAL_API_KEY` | `mistral-large-latest` |
+| **Groq** | `pip install 'cloudops-openkite[groq]'` | `GROQ_API_KEY` | `llama-3.3-70b-versatile` |
+| **Qwen** _(via DashScope)_ | `pip install 'cloudops-openkite[qwen]'` | `DASHSCOPE_API_KEY` | `qwen3-coder-plus` |
+| **OpenRouter** | `pip install 'cloudops-openkite[openai]'` | `OPENROUTER_API_KEY` | `anthropic/claude-haiku-4.5` |
+| **Ollama** _(local)_ | `pip install 'cloudops-openkite[ollama]'` | _none_ | `llama3.1` |
+
+### Setup recipes
+
+Pick one block and export it (append to `~/.bashrc` to make it sticky):
+
+```bash
+# OpenAI
+export OPENKITE_PROVIDER=openai
+export OPENKITE_MODEL=gpt-4o
+export OPENAI_API_KEY=sk-...
+
+# Google Gemini
+export OPENKITE_PROVIDER=google
+export OPENKITE_MODEL=gemini-2.0-flash
+export GOOGLE_API_KEY=...
+
+# Qwen via DashScope
+export OPENKITE_PROVIDER=qwen
+export OPENKITE_MODEL=qwen3-coder-plus
+export DASHSCOPE_API_KEY=...
+
+# Groq (Llama 3.3)
+export OPENKITE_PROVIDER=groq
+export OPENKITE_MODEL=llama-3.3-70b-versatile
+export GROQ_API_KEY=...
+
+# Ollama (local, no key)
+export OPENKITE_PROVIDER=ollama
+export OPENKITE_MODEL=llama3.1
+```
+
+Or use the combined form and skip `OPENKITE_PROVIDER`:
+
+```bash
+export OPENKITE_MODEL=openai:gpt-4o
+export OPENKITE_MODEL=anthropic:claude-sonnet-4-6
+```
+
+> **Note on tool-calling fidelity** — Claude (any tier), GPT-4o, Gemini 2.0 Pro, Qwen3-Coder, and Llama 3.3 70B all handle the 29-tool fan-out reliably. Smaller open models (Llama 3 8B, Mistral 7B) sometimes misroute on broad audits.
+
 ## Configuration
 
 | Env var | Default | Purpose |
 |---|---|---|
-| `ANTHROPIC_API_KEY` | _required_ | Claude API key |
 | `AWS_ACCESS_KEY_ID` / `AWS_SECRET_ACCESS_KEY` | _required_ | AWS credentials |
 | `AWS_DEFAULT_REGION` | `us-east-1` | Default region for tools |
 | `AWS_PROFILE` | — | Use a named profile from `~/.aws/credentials` instead |
-| `OPENKITE_MODEL` | `claude-haiku-4-5-20251001` | Override the LLM |
+| `OPENKITE_PROVIDER` | `anthropic` | LLM provider — see [Choose your LLM provider](#choose-your-llm-provider) |
+| `OPENKITE_MODEL` | provider default | Model id, or combined `provider:model` form |
+| `<PROVIDER>_API_KEY` | _required_ | API key for the chosen provider (e.g. `OPENAI_API_KEY`) |
+| `OPENKITE_DB` | `checkpoints/openkite.db` | SQLite checkpoint path; unset for in-memory |
 
 ## Development
 
@@ -194,7 +245,8 @@ The full test suite never hits real AWS or real Anthropic — moto fakes the AWS
 ```
 openkite/
 ├── agent.py              # build_agent() = create_react_agent(...)
-├── cli.py                # `openkite ask` and `openkite tools`
+├── llm.py                # provider registry + build_llm() factory
+├── cli.py                # `openkite ask`, `openkite tools`, `openkite providers`
 └── tools/
     ├── _aws.py           # boto3 client factory + CW metric helpers + confirm()
     ├── ec2.py            # EC2 / EBS / NAT / SG tools
