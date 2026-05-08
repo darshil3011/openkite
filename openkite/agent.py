@@ -7,21 +7,18 @@ ask for confirmation; no separate approval node is needed.
 
 from __future__ import annotations
 
-import os
 import sqlite3
 from functools import lru_cache
 from pathlib import Path
 from typing import Any
 
-from langchain_anthropic import ChatAnthropic
 from langgraph.checkpoint.base import BaseCheckpointSaver
 from langgraph.checkpoint.memory import InMemorySaver
 from langgraph.checkpoint.sqlite import SqliteSaver
 from langgraph.prebuilt import create_react_agent
 
+from openkite.llm import build_llm
 from openkite.tools import ALL_TOOLS
-
-DEFAULT_MODEL = "claude-haiku-4-5-20251001"
 
 SYSTEM_PROMPT = """You are an AWS operations assistant.
 
@@ -53,21 +50,22 @@ def _make_checkpointer(db_path: str | None) -> BaseCheckpointSaver:
     return SqliteSaver(conn)
 
 
-@lru_cache(maxsize=2)
+@lru_cache(maxsize=4)
 def build_agent(
+    provider: str | None = None,
     model: str | None = None,
     db_path: str | None = "checkpoints/openkite.db",
 ) -> Any:
     """Compile the ReAct agent. Cached because compilation is non-trivial.
 
     Args:
-        model: Anthropic model name. Falls back to ``$OPENKITE_MODEL`` then
-            ``DEFAULT_MODEL``.
+        provider: LLM provider. Falls back to ``$OPENKITE_PROVIDER`` then ``anthropic``.
+        model: Model id (or combined ``provider:model``). Falls back to
+            ``$OPENKITE_MODEL`` then the provider default.
         db_path: SQLite path for checkpointer; ``None`` uses in-memory.
     """
-    model_name = model or os.getenv("OPENKITE_MODEL", DEFAULT_MODEL)
     return create_react_agent(
-        model=ChatAnthropic(model=model_name, temperature=0, max_tokens=4096),
+        model=build_llm(provider=provider, model=model),
         tools=ALL_TOOLS,
         prompt=SYSTEM_PROMPT,
         checkpointer=_make_checkpointer(db_path),
