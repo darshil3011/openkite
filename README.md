@@ -1,16 +1,8 @@
 <div align="center">
 
-```
-  ____                   _  ___ _       
- / __ \                 | |/ (_) |      
-| |  | |_ __   ___ _ __ | ' / _| |_ ___ 
-| |  | | '_ \ / _ \ '_ \|  < | | __/ _ \
-| |__| | |_) |  __/ | | | . \| | ||  __/
- \____/| .__/ \___|_| |_|_|\_\_|\__\___|
-       | |                              
-       |_|
-       Opensource Infra AI Agent
-```
+<img src="assets/logo.png" alt="OpenKite" width="320">
+
+**Opensource Infra AI Agent**
 
 **An opensource Multi-Agent system that works like your Cloud DevOps team. Give commands, audit costs and analyze your AWS Infrastructure in plain english.**
 
