@@ -1,14 +1,15 @@
 <div align="center">
 
 ```
-   _____            _   _            _ 
-  / ____|          | | (_)          | |
- | (___   ___ _ __ | |_ _ _ __   ___| |
-  \___ \ / _ \ '_ \| __| | '_ \ / _ \ |
-  ____) |  __/ | | | |_| | | | |  __/ |
- |_____/ \___|_| |_|\__|_|_| |_|\___|_|
-                                       
-       Natural-language AWS agent
+  ____                   _  ___ _       
+ / __ \                 | |/ (_) |      
+| |  | |_ __   ___ _ __ | ' / _| |_ ___ 
+| |  | | '_ \ / _ \ '_ \|  < | | __/ _ \
+| |__| | |_) |  __/ | | | . \| | ||  __/
+ \____/| .__/ \___|_| |_|_|\_\_|\__\___|
+       | |                              
+       |_|
+       Opensource Infra AI Agent
 ```
 
 **An opensource Multi-Agent system that works like your Cloud DevOps team. Give commands, audit costs and analyze your AWS Infrastructure in plain english.**
