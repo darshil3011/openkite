@@ -1,38 +1,50 @@
 <div align="center">
 
 ```
-   _____            _   _            _ 
-  / ____|          | | (_)          | |
- | (___   ___ _ __ | |_ _ _ __   ___| |
-  \___ \ / _ \ '_ \| __| | '_ \ / _ \ |
-  ____) |  __/ | | | |_| | | | |  __/ |
- |_____/ \___|_| |_|\__|_|_| |_|\___|_|
-                                       
-       Natural-language AWS agent
+  ____                   _  ___ _       
+ / __ \                 | |/ (_) |      
+| |  | |_ __   ___ _ __ | ' / _| |_ ___ 
+| |  | | '_ \ / _ \ '_ \|  < | | __/ _ \
+| |__| | |_) |  __/ | | | . \| | ||  __/
+ \____/| .__/ \___|_| |_|_|\_\_|\__\___|
+       | |                              
+       |_|
+       Opensource Infra AI Agent
 ```
 
-**A LangGraph ReAct agent that talks to AWS in plain English — answers questions, audits cost & security, and runs approved actions.**
+**An opensource Multi-Agent system that works like your Cloud DevOps team. Give commands, audit costs and analyze your AWS Infrastructure in plain english.**
 
 [![Star on GitHub](https://img.shields.io/github/stars/darshil3011/openkite?style=for-the-badge&logo=github&color=ffd700&logoColor=white)](https://github.com/darshil3011/openkite/stargazers)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue?style=for-the-badge)](LICENSE)
 [![Python 3.11+](https://img.shields.io/badge/python-3.11+-3776ab?style=for-the-badge&logo=python&logoColor=white)](https://www.python.org/)
 [![LinkedIn](https://img.shields.io/badge/LinkedIn-Connect-0A66C2?style=for-the-badge&logo=linkedin&logoColor=white)](https://linkedin.com/in/darshil3011)
 
-[Quickstart](#quickstart) · [Examples](#examples) · [Toolbox](#toolbox) · [Architecture](#architecture) · [Contributing](#contributing)
+[Quickstart](#quickstart) · [Examples](#examples) · [Toolbox](#toolbox) · [Contributing](#contributing)
 
 </div>
 
 ---
 
+<p align="center">
+  <img src="assets/openkite.png" alt="OpenKite architecture" width="100%">
+</p>
+
+---
+
 ## Why OpenKite
 
-Most AWS automation is either a static script (run all the checks every time) or a heavyweight workflow engine. OpenKite is the middle ground: a **single ReAct agent** with ~30 typed tools that the LLM picks from based on what you actually asked.
+OpenKite collapses your entire DevOps console into a single chat prompt. Instead of jumping between the AWS console, Cost Explorer dashboards, CloudWatch tabs, Trusted Advisor, custom Bash scripts, and a folder of Terraform one-offs — you just *ask*.
 
-- Ask narrow questions → **one** tool call → cheap and fast.
-- Ask for an audit → several analyzers in parallel.
-- Ask to change something → the agent pauses and asks for confirmation before any write.
+It does the work a DevOps engineer would do, on demand:
 
-No bespoke graph compilation, no plan-generation step, no two-stage approval pipeline — just LangGraph's standard `create_react_agent` over a clean toolbox.
+- **Inventory & visibility** — list, filter, and inspect EC2, RDS, Lambda, S3, NAT, security groups across regions without touching the console.
+- **Cost optimization** — audit idle compute, orphan EBS, dead Lambdas, lifecycle-less buckets, idle NAT gateways and underused reservations — the same hunt a FinOps engineer runs every quarter.
+- **Security & compliance checks** — flag wide-open security groups and public S3 buckets in seconds, no Trusted Advisor subscription needed.
+- **Performance triage** — pull CloudWatch metrics for any resource (`is i-… idle?`, `RDS CPU last 14 days?`) without writing a single boto3 call.
+- **Safe remediation** — stop instances, delete orphan volumes, attach S3 lifecycle rules, retire dead Lambdas — every write action pauses for human approval before it runs.
+- **Conversational follow-ups** — *"now delete the smallest one"* — threads remember context across turns, just like a teammate would.
+
+One agent. ~30 typed tools. Plain English in, real AWS actions out — with humans in the loop where it matters.
 
 ## Quickstart
 
@@ -160,34 +172,6 @@ Three layers per service:
 
 Run `openkite tools` to see live arg signatures.
 
-## Architecture
-
-```
-┌──────────────┐   user query
-│     CLI      │ ─────────────────┐
-└──────────────┘                  ▼
-                          ┌───────────────┐
-                          │  ReAct agent  │  ← create_react_agent(model, tools)
-                          │  (LLM router) │     model: Claude Haiku 4.5 by default
-                          └───────┬───────┘
-                                  │ tool_calls
-                          ┌───────▼───────┐
-                          │  tools node   │  ← 29 @tool functions
-                          └───────┬───────┘
-                                  │ ToolMessage
-                                  └────► back to agent until done
-                                  
-   write tools call interrupt() → graph pauses → user replies → resume
-```
-
-Two nodes. One conditional edge. SQLite checkpointer for thread persistence. That's it.
-
-- **Model**: `claude-haiku-4-5-20251001` by default. Override with `OPENKITE_MODEL=claude-sonnet-4-6` for harder reasoning.
-- **State**: standard LangGraph `MessagesState` — no custom reducers, no parallel-write conflicts.
-- **HITL**: per-tool, in-band. Each write tool calls `confirm()` (a thin `interrupt()` wrapper) before its boto3 call.
-
-See [`openkite/agent.py`](openkite/agent.py) — the entire agent is ~75 lines.
-
 ## Configuration
 
 | Env var | Default | Purpose |
@@ -230,18 +214,6 @@ tests/
 ├── test_tools.py         # moto-backed tool tests
 └── test_agent.py         # ReAct flow tests with fake LLM
 ```
-
-## Roadmap
-
-- [ ] SSM `run_ssm_command` tool — execute shell commands on EC2 without SSH
-- [ ] IAM tools — `list_iam_users`, `audit_iam_mfa`, `audit_old_access_keys`
-- [ ] CloudWatch Alarm triager — ReAct loop over alarms in `ALARM` state
-- [ ] CloudTrail audit tools
-- [ ] Multi-region scans
-- [ ] Slack / GitHub Issues output
-- [ ] Web UI
-
-Pull requests welcome — see [Contributing](#contributing).
 
 ## Contributing
 
