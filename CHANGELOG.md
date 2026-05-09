@@ -7,12 +7,23 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- CloudTrail tools (`openkite/tools/cloudtrail.py`):
+  - `lookup_recent_changes` — slim list of recent control-plane events with
+    sane defaults (last 1h, writes-only, limit 25; hard caps 24h / 50). Drops
+    the multi-KB `CloudTrailEvent` blob from each row to keep LLM context
+    small. Routes one explicit filter (`event_name`, `username`,
+    `resource_name`) to the API's single `LookupAttributes` slot and applies
+    `writes_only` client-side; otherwise sends `ReadOnly=false` server-side.
+  - `get_cloudtrail_event` — full record for one `event_id` with the
+    `CloudTrailEvent` JSON parsed into a dict (no stringified blob).
+
 ### Planned
 
 - SSM `run_ssm_command` tool — execute shell commands on EC2 without SSH.
 - IAM tools (`list_iam_users`, `audit_iam_mfa`, `audit_old_access_keys`).
 - CloudWatch alarm triager (ReAct loop over alarms in `ALARM` state).
-- CloudTrail audit tools.
 - Multi-region scans.
 
 ## [0.2.0] — 2026-05-07

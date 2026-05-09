@@ -140,7 +140,7 @@ openkite ask "delete the smallest one" --thread my-cleanup    # remembers the li
 
 ## Toolbox
 
-29 typed tools across five service families:
+31 typed tools across six service families:
 
 | Category | Tools |
 |---|---|
@@ -151,6 +151,7 @@ openkite ask "delete the smallest one" --thread my-cleanup    # remembers the li
 | **Lambda** | `list_lambda_functions`, `get_lambda_invocation_count`, `find_dead_lambda`, `delete_lambda` |
 | **S3** | `list_s3_buckets`, `get_s3_lifecycle`, `get_s3_public_access`, `find_buckets_without_lifecycle`, `audit_public_buckets`, `put_s3_lifecycle` |
 | **Cost** | `get_cost_breakdown`, `get_ri_coverage` |
+| **CloudTrail** | `lookup_recent_changes`, `get_cloudtrail_event` |
 
 Three layers per service:
 
@@ -172,7 +173,7 @@ Run `openkite tools` to see live arg signatures.
                           └───────┬───────┘
                                   │ tool_calls
                           ┌───────▼───────┐
-                          │  tools node   │  ← 29 @tool functions
+                          │  tools node   │  ← 31 @tool functions
                           └───────┬───────┘
                                   │ ToolMessage
                                   └────► back to agent until done
@@ -201,7 +202,7 @@ See [`openkite/agent.py`](openkite/agent.py) — the entire agent is ~75 lines.
 ## Development
 
 ```bash
-# run the test suite (23 tests, all moto-backed; no real AWS calls)
+# run the test suite (29 tests; moto-backed where possible, stubs elsewhere; no real AWS calls)
 pytest -q
 
 # lint
@@ -225,7 +226,8 @@ openkite/
     ├── rds.py            # RDS tools
     ├── lambda_.py        # Lambda tools
     ├── s3.py             # S3 tools
-    └── cost.py           # Cost Explorer tools
+    ├── cost.py           # Cost Explorer tools
+    └── cloudtrail.py     # CloudTrail recent-changes lookup
 tests/
 ├── test_tools.py         # moto-backed tool tests
 └── test_agent.py         # ReAct flow tests with fake LLM
@@ -236,7 +238,7 @@ tests/
 - [ ] SSM `run_ssm_command` tool — execute shell commands on EC2 without SSH
 - [ ] IAM tools — `list_iam_users`, `audit_iam_mfa`, `audit_old_access_keys`
 - [ ] CloudWatch Alarm triager — ReAct loop over alarms in `ALARM` state
-- [ ] CloudTrail audit tools
+- [x] CloudTrail tools — `lookup_recent_changes`, `get_cloudtrail_event`
 - [ ] Multi-region scans
 - [ ] Slack / GitHub Issues output
 - [ ] Web UI
