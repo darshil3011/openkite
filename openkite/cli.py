@@ -117,6 +117,32 @@ def tools():
     console.print(table)
 
 
+@app.command()
+def providers():
+    """List every supported LLM provider, default model, and required env var."""
+    from openkite.llm import PROVIDERS
+
+    table = Table(title="OpenKite LLM providers", header_style="bold cyan", expand=True)
+    table.add_column("Provider", style="green", no_wrap=True)
+    table.add_column("Default model", style="cyan")
+    table.add_column("API key env var", style="yellow")
+    table.add_column("Install", style="dim")
+
+    for prov in PROVIDERS.values():
+        table.add_row(
+            prov.name,
+            prov.default_model,
+            prov.env_key or "(none — local)",
+            f"pip install 'cloudops-openkite[{prov.extra}]'",
+        )
+    console.print(table)
+    console.print(
+        "\n[dim]Set [bold]OPENKITE_PROVIDER[/bold] and [bold]OPENKITE_MODEL[/bold] "
+        "(or use the combined form [bold]OPENKITE_MODEL=provider:model[/bold]) "
+        "plus the provider's API key env var.[/dim]"
+    )
+
+
 def main() -> None:
     try:
         app()
