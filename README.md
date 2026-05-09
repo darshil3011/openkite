@@ -137,7 +137,7 @@ openkite ask "delete the smallest one" --thread my-cleanup    # remembers the li
 
 ## Toolbox
 
-29 typed tools across five service families:
+31 typed tools across six service families:
 
 | Category | Tools |
 |---|---|
@@ -148,6 +148,7 @@ openkite ask "delete the smallest one" --thread my-cleanup    # remembers the li
 | **Lambda** | `list_lambda_functions`, `get_lambda_invocation_count`, `find_dead_lambda`, `delete_lambda` |
 | **S3** | `list_s3_buckets`, `get_s3_lifecycle`, `get_s3_public_access`, `find_buckets_without_lifecycle`, `audit_public_buckets`, `put_s3_lifecycle` |
 | **Cost** | `get_cost_breakdown`, `get_ri_coverage` |
+| **CloudTrail** | `lookup_recent_changes`, `get_cloudtrail_event` |
 
 Three layers per service:
 
@@ -159,49 +160,22 @@ Run `openkite tools` to see live arg signatures.
 
 ## Choose your LLM provider
 
-OpenKite is provider-agnostic. Anthropic is the default; switch to any other provider with two env vars (`OPENKITE_PROVIDER` + `OPENKITE_MODEL`) plus that provider's API key. No CLI flags, no code changes.
-
-Run `openkite providers` to see the live list with default models and install hints.
-
-| Provider | Install | API key env var | Example model |
-|---|---|---|---|
-| **Anthropic** _(default)_ | bundled | `ANTHROPIC_API_KEY` | `claude-haiku-4-5-20251001` |
-| **OpenAI** | `pip install 'cloudops-openkite[openai]'` | `OPENAI_API_KEY` | `gpt-4o` |
-| **Google Gemini** | `pip install 'cloudops-openkite[google]'` | `GOOGLE_API_KEY` | `gemini-2.0-flash` |
-| **Mistral** | `pip install 'cloudops-openkite[mistral]'` | `MISTRAL_API_KEY` | `mistral-large-latest` |
-| **Groq** | `pip install 'cloudops-openkite[groq]'` | `GROQ_API_KEY` | `llama-3.3-70b-versatile` |
-| **Qwen** _(via DashScope)_ | `pip install 'cloudops-openkite[qwen]'` | `DASHSCOPE_API_KEY` | `qwen3-coder-plus` |
-| **OpenRouter** | `pip install 'cloudops-openkite[openai]'` | `OPENROUTER_API_KEY` | `anthropic/claude-haiku-4.5` |
-| **Ollama** _(local)_ | `pip install 'cloudops-openkite[ollama]'` | _none_ | `llama3.1` |
-
-### Setup recipes
-
-Pick one block and export it (append to `~/.bashrc` to make it sticky):
-
-```bash
-# OpenAI
-export OPENKITE_PROVIDER=openai
-export OPENKITE_MODEL=gpt-4o
-export OPENAI_API_KEY=sk-...
-
-# Google Gemini
-export OPENKITE_PROVIDER=google
-export OPENKITE_MODEL=gemini-2.0-flash
-export GOOGLE_API_KEY=...
-
-# Qwen via DashScope
-export OPENKITE_PROVIDER=qwen
-export OPENKITE_MODEL=qwen3-coder-plus
-export DASHSCOPE_API_KEY=...
-
-# Groq (Llama 3.3)
-export OPENKITE_PROVIDER=groq
-export OPENKITE_MODEL=llama-3.3-70b-versatile
-export GROQ_API_KEY=...
-
-# Ollama (local, no key)
-export OPENKITE_PROVIDER=ollama
-export OPENKITE_MODEL=llama3.1
+```
+┌──────────────┐   user query
+│     CLI      │ ─────────────────┐
+└──────────────┘                  ▼
+                          ┌───────────────┐
+                          │  ReAct agent  │  ← create_react_agent(model, tools)
+                          │  (LLM router) │     model: Claude Haiku 4.5 by default
+                          └───────┬───────┘
+                                  │ tool_calls
+                          ┌───────▼───────┐
+                          │  tools node   │  ← 31 @tool functions
+                          └───────┬───────┘
+                                  │ ToolMessage
+                                  └────► back to agent until done
+                                  
+   write tools call interrupt() → graph pauses → user replies → resume
 ```
 
 Or use the combined form and skip `OPENKITE_PROVIDER`:
@@ -228,7 +202,7 @@ export OPENKITE_MODEL=anthropic:claude-sonnet-4-6
 ## Development
 
 ```bash
-# run the test suite (23 tests, all moto-backed; no real AWS calls)
+# run the test suite (29 tests; moto-backed where possible, stubs elsewhere; no real AWS calls)
 pytest -q
 
 # lint
@@ -253,7 +227,8 @@ openkite/
     ├── rds.py            # RDS tools
     ├── lambda_.py        # Lambda tools
     ├── s3.py             # S3 tools
-    └── cost.py           # Cost Explorer tools
+    ├── cost.py           # Cost Explorer tools
+    └── cloudtrail.py     # CloudTrail recent-changes lookup
 tests/
 ├── test_tools.py         # moto-backed tool tests
 └── test_agent.py         # ReAct flow tests with fake LLM

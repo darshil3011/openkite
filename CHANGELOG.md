@@ -9,38 +9,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
-- **Multi-provider LLM support.** Pick any tool-calling chat model — Anthropic,
-  OpenAI, Google Gemini, Mistral, Groq, Qwen (via DashScope), OpenRouter, or
-  Ollama. Configure with `OPENKITE_PROVIDER` + `OPENKITE_MODEL` env vars (or
-  the combined form `OPENKITE_MODEL=provider:model`).
-- `openkite/llm.py` — provider registry and `build_llm()` factory with
-  per-provider env-key validation and clean install-hint errors.
-- `openkite providers` command — lists every supported provider, default model,
-  required API-key env var, and pip install hint.
-- Provider-specific pip extras: `[openai]`, `[google]`, `[mistral]`, `[groq]`,
-  `[qwen]`, `[ollama]`, and `[all-llms]`.
-- `tests/test_llm.py` — provider resolution, env override, combined-form
-  parsing, missing-key error, local-provider key skip.
-
-### Changed
-
-- **Project renamed from Sentinel to OpenKite.** Package directory, CLI
-  command, env var prefix (`SENTINEL_*` → `OPENKITE_*`), pyproject metadata,
-  GitHub URLs, and documentation all updated.
-- `build_agent()` now accepts `provider` + `model` and delegates LLM
-  construction to `openkite.llm.build_llm()`. The hardcoded `ChatAnthropic`
-  import is gone; Anthropic remains the default.
-- `langchain>=0.3` added to core dependencies (used by `init_chat_model`).
-- README restructured: new top-of-page architecture diagram, "Choose your LLM
-  provider" section with paste-ready setup recipes for each provider,
-  Architecture and Roadmap sections removed.
+- CloudTrail tools (`openkite/tools/cloudtrail.py`):
+  - `lookup_recent_changes` — slim list of recent control-plane events with
+    sane defaults (last 1h, writes-only, limit 25; hard caps 24h / 50). Drops
+    the multi-KB `CloudTrailEvent` blob from each row to keep LLM context
+    small. Routes one explicit filter (`event_name`, `username`,
+    `resource_name`) to the API's single `LookupAttributes` slot and applies
+    `writes_only` client-side; otherwise sends `ReadOnly=false` server-side.
+  - `get_cloudtrail_event` — full record for one `event_id` with the
+    `CloudTrailEvent` JSON parsed into a dict (no stringified blob).
 
 ### Planned
 
 - SSM `run_ssm_command` tool — execute shell commands on EC2 without SSH.
 - IAM tools (`list_iam_users`, `audit_iam_mfa`, `audit_old_access_keys`).
 - CloudWatch alarm triager (ReAct loop over alarms in `ALARM` state).
-- CloudTrail audit tools.
 - Multi-region scans.
 
 ## [0.2.0] — 2026-05-07

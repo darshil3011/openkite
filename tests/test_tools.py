@@ -13,7 +13,9 @@ import boto3
 import pytest
 from moto import mock_aws
 
+from openkite.tools import cloudtrail as ct_mod
 from openkite.tools import cost as cost_mod
+from openkite.tools.cloudtrail import get_cloudtrail_event, lookup_recent_changes
 from openkite.tools.ec2 import (
     audit_open_security_groups,
     delete_volume,
@@ -299,6 +301,115 @@ def test_get_ri_coverage_parses_response(monkeypatch):
     assert out[0]["family"] == "m5"
     assert out[0]["coverage_pct"] == 20.0
     assert out[0]["on_demand_hours"] == 500.0
+
+
+# ── CloudTrail (stubbed; moto doesn't auto-record events from other services) ─
+
+def _ct_event(event_id="e1", name="TerminateInstances", user="alice",
+              source="ec2.amazonaws.com", read_only="false", resources=None,
+              detail=None):
+    return {
+        "EventId": event_id,
+        "EventName": name,
+        "ReadOnly": read_only,
+        "Username": user,
+        "EventSource": source,
+        "EventTime": datetime.now(UTC),
+        "Resources": resources or [{"ResourceType": "AWS::EC2::Instance",
+                                    "ResourceName": "i-0abc"}],
+        "CloudTrailEvent": '{"eventVersion":"1.08","awsRegion":"us-east-1"}'
+        if detail is None else detail,
+    }
+
+
+class _StubCT:
+    """Minimal CloudTrail stub that captures kwargs and returns canned events."""
+
+    def __init__(self, events: list[dict]):
+        self.events = events
+        self.last_kwargs: dict = {}
+
+    def lookup_events(self, **kwargs):
+        self.last_kwargs = kwargs
+        return {"Events": self.events}
+
+
+def test_lookup_recent_changes_slims_rows_and_strips_blob(monkeypatch):
+    stub = _StubCT([_ct_event()])
+    monkeypatch.setattr(ct_mod, "client", lambda *_a, **_k: stub)
+
+    out = lookup_recent_changes.invoke({"hours": 1})
+
+    assert len(out) == 1
+    row = out[0]
+    assert set(row) == {"event_id", "time", "event", "user", "source",
+                        "read_only", "resources"}
+    assert "CloudTrailEvent" not in row
+    assert row["event"] == "TerminateInstances"
+    assert row["read_only"] is False
+    assert "i-0abc" in row["resources"]
+
+
+def test_lookup_recent_changes_default_filters_writes_server_side(monkeypatch):
+    stub = _StubCT([])
+    monkeypatch.setattr(ct_mod, "client", lambda *_a, **_k: stub)
+
+    lookup_recent_changes.invoke({})
+
+    assert stub.last_kwargs["LookupAttributes"] == [
+        {"AttributeKey": "ReadOnly", "AttributeValue": "false"},
+    ]
+
+
+def test_lookup_recent_changes_explicit_filter_takes_server_side_slot(monkeypatch):
+    """When event_name is given, server-side filter is EventName; ReadOnly applied client-side."""
+    stub = _StubCT([
+        _ct_event(event_id="w", name="TerminateInstances", read_only="false"),
+        _ct_event(event_id="r", name="TerminateInstances", read_only="true"),
+    ])
+    monkeypatch.setattr(ct_mod, "client", lambda *_a, **_k: stub)
+
+    out = lookup_recent_changes.invoke({"event_name": "TerminateInstances"})
+
+    assert stub.last_kwargs["LookupAttributes"] == [
+        {"AttributeKey": "EventName", "AttributeValue": "TerminateInstances"},
+    ]
+    ids = {r["event_id"] for r in out}
+    assert ids == {"w"}  # read-only one filtered out client-side
+
+
+def test_lookup_recent_changes_clamps_hours_and_limit(monkeypatch):
+    stub = _StubCT([])
+    monkeypatch.setattr(ct_mod, "client", lambda *_a, **_k: stub)
+
+    lookup_recent_changes.invoke({"hours": 999, "limit": 999})
+
+    window = stub.last_kwargs["EndTime"] - stub.last_kwargs["StartTime"]
+    assert timedelta(hours=23) < window <= timedelta(hours=24)
+    assert stub.last_kwargs["MaxResults"] == 50
+
+
+def test_get_cloudtrail_event_parses_blob(monkeypatch):
+    stub = _StubCT([_ct_event(event_id="abc")])
+    monkeypatch.setattr(ct_mod, "client", lambda *_a, **_k: stub)
+
+    out = get_cloudtrail_event.invoke({"event_id": "abc"})
+
+    assert out["found"] is True
+    assert out["event_id"] == "abc"
+    assert isinstance(out["detail"], dict)
+    assert out["detail"]["awsRegion"] == "us-east-1"
+    assert stub.last_kwargs["LookupAttributes"] == [
+        {"AttributeKey": "EventId", "AttributeValue": "abc"},
+    ]
+
+
+def test_get_cloudtrail_event_returns_not_found(monkeypatch):
+    monkeypatch.setattr(ct_mod, "client", lambda *_a, **_k: _StubCT([]))
+
+    out = get_cloudtrail_event.invoke({"event_id": "missing"})
+
+    assert out == {"event_id": "missing", "found": False}
 
 
 # ── Write tools — interrupt path ────────────────────────────────────────────
