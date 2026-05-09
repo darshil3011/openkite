@@ -12,13 +12,16 @@ Three layers:
 
 from __future__ import annotations
 
+from openkite.tools.cloudtrail import CLOUDTRAIL_TOOLS
 from openkite.tools.cost import COST_TOOLS
 from openkite.tools.ec2 import EC2_TOOLS
 from openkite.tools.lambda_ import LAMBDA_TOOLS
 from openkite.tools.rds import RDS_TOOLS
 from openkite.tools.s3 import S3_TOOLS
 
-ALL_TOOLS = [*EC2_TOOLS, *RDS_TOOLS, *LAMBDA_TOOLS, *S3_TOOLS, *COST_TOOLS]
+ALL_TOOLS = [
+    *EC2_TOOLS, *RDS_TOOLS, *LAMBDA_TOOLS, *S3_TOOLS, *COST_TOOLS, *CLOUDTRAIL_TOOLS,
+]
 
 
 __all__ = ["ALL_TOOLS"]
